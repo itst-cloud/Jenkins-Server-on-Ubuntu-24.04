@@ -1,0 +1,85 @@
+
+Installing Java
+
+sudo apt install fontconfig openjdk-17-jre
+
+Test Java by checking its version
+
+java -version
+
+Adding the key for the Jenkins repository
+
+sudo wget -O /usr/share/keyrings/jenkins-keyring.asc https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key
+Add the Jenkins repository to your server
+
+echo "deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc]" \
+https://pkg.jenkins.io/debian-stable binary/ | sudo tee \
+/etc/apt/sources.list.d/jenkins.list > /dev/null
+Install Jenkins
+
+sudo apt update
+
+sudo apt install jenkins
+
+Log in to web console at port 8080 Unlock Jenkins
+
+Enter the following command to retrieve your secret key from your server when you’re asked for it:
+
+sudo cat /var/lib/jenkins/secrets/initialAdminPassword
+
+Adding a system user for the Jenkins Agent
+
+sudo useradd -r -md /var/jenkins_home -s /bin/bash jenkins
+
+Update permissions on the Jenkins home directory
+
+chown jenkins:jenkins -R /var/jenkins_home
+
+Note: That directory should’ve been created earlier during the test run as shown in the video. Create a directory for the Agent’s Systemd Service
+
+sudo mkdir -p /usr/local/jenkins-service
+
+move the file downloaded earlier somewhere else:
+
+sudo mv agent.jar /usr/local/jenkins-service/
+
+Jenkins Agent Start Script
+
+Open an editor to the file we’ll be creating:
+
+sudo nano /usr/local/jenkins-service/agent-start.sh
+
+Inside the file, place the following:
+
+#!/bin/bash
+cd /usr/local/jenkins-service
+curl -sO http://10.10.10.205:8080/jnlpJars/agent.jar
+exit 0
+Update the permissions for the Start Script
+
+sudo chmod +x /usr/local/jenkins-service/agent-start.sh
+
+Create a Systemd Unit to start the agent
+
+sudo nano /etc/systemd/system/jenkins-agent.service
+
+Inside the file, place the following:
+
+[Unit]
+Description=Jenkins Agent
+
+[Service]
+User=jenkins
+WorkingDirectory=/var/jenkins_home
+ExecStart=/bin/bash /usr/local/jenkins-service/agent-start.sh
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+Refresh Systemd and enable/start the agent
+
+sudo systemctl daemon-reload
+
+sudo systemctl enable jenkins-agent.service
+
+sudo systemctl start jenkins-agent.service
